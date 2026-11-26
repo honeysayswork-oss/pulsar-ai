@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, Send, RotateCcw, Zap } from "lucide-react";
 import Starfield from "@/components/Starfield";
 import ChatBubble from "@/components/ChatBubble";
-import SettingsPanel from "@/components/SettingsPanel";
+import SettingsPanel, { AIParams, DEFAULT_PARAMS } from "@/components/SettingsPanel";
 
 type Message = { role: "user" | "assistant"; content: string };
 type Personality = "oracle" | "grok" | "quantum";
@@ -31,6 +31,7 @@ export default function PulsarChat() {
   const [personality, setPersonality] = useState<Personality>("oracle");
   const [model, setModel] = useState("openai/gpt-oss-120b");
   const [clientApiKey, setClientApiKey] = useState("");
+  const [aiParams, setAiParams] = useState<AIParams>(DEFAULT_PARAMS);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -70,6 +71,12 @@ export default function PulsarChat() {
             model,
             personality,
             clientApiKey,
+            temperature: aiParams.temperature,
+            maxTokens: aiParams.maxTokens,
+            topP: aiParams.topP,
+            frequencyPenalty: aiParams.frequencyPenalty,
+            presencePenalty: aiParams.presencePenalty,
+            systemPromptOverride: aiParams.systemPromptOverride,
           }),
           signal: controller.signal,
         });
@@ -111,7 +118,7 @@ export default function PulsarChat() {
         abortRef.current = null;
       }
     },
-    [messages, streaming, model, personality, clientApiKey]
+    [messages, streaming, model, personality, clientApiKey, aiParams]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -349,6 +356,8 @@ export default function PulsarChat() {
           setModel={setModel}
           clientApiKey={clientApiKey}
           setClientApiKey={setClientApiKey}
+          aiParams={aiParams}
+          setAiParams={setAiParams}
         />
       )}
     </div>

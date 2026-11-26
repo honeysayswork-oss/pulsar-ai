@@ -22,7 +22,19 @@ Avoid fluff. Get straight to the architecture, code, and implementation details.
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model = "openai/gpt-oss-120b", personality = "oracle", clientApiKey } = await req.json();
+    const {
+      messages,
+      model = "openai/gpt-oss-120b",
+      personality = "oracle",
+      clientApiKey,
+      // Advanced model parameters
+      temperature,
+      maxTokens,
+      topP,
+      frequencyPenalty,
+      presencePenalty,
+      systemPromptOverride,
+    } = await req.json();
 
     const apiKey = clientApiKey?.trim() || process.env.GROQ_API_KEY;
 
@@ -38,7 +50,18 @@ export async function POST(req: NextRequest) {
 
     const groq = new Groq({ apiKey });
 
-    const systemPromptText = SYSTEM_PROMPTS[personality as keyof typeof SYSTEM_PROMPTS] || SYSTEM_PROMPTS.oracle;
+    // Default temperatures per personality if not overridden
+    const defaultTemps: Record<string, number> = { oracle: 0.65, grok: 0.8, quantum: 0.4 };
+    const resolvedTemp = typeof temperature === "number" ? temperature : (defaultTemps[personality] ?? 0.65);
+    const resolvedMaxTokens = typeof maxTokens === "number" ? maxTokens : 4096;
+    const resolvedTopP = typeof topP === "number" ? topP : 1;
+    const resolvedFreqPenalty = typeof frequencyPenalty === "number" ? frequencyPenalty : 0;
+    const resolvedPresPenalty = typeof presencePenalty === "number" ? presencePenalty : 0;
+
+    const systemPromptText =
+      systemPromptOverride?.trim() ||
+      SYSTEM_PROMPTS[personality as keyof typeof SYSTEM_PROMPTS] ||
+      SYSTEM_PROMPTS.oracle;
 
     const chatMessages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPromptText },
@@ -52,8 +75,11 @@ export async function POST(req: NextRequest) {
       model: model || "openai/gpt-oss-120b",
       messages: chatMessages,
       stream: true,
-      temperature: personality === "grok" ? 0.8 : personality === "oracle" ? 0.65 : 0.4,
-      max_tokens: 4096,
+      temperature: resolvedTemp,
+      max_tokens: resolvedMaxTokens,
+      top_p: resolvedTopP,
+      frequency_penalty: resolvedFreqPenalty,
+      presence_penalty: resolvedPresPenalty,
     });
 
     const encoder = new TextEncoder();
